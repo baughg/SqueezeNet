@@ -54,11 +54,16 @@ lb2_thres = lb2_thres - 12;
 %% Convolution Layer 1
 %load('Intermed_Results\1_data.mat');
 %img = data;
+root_dir = 'test_data_8bit/';
 tic
 load('Params\conv1_w.mat');
 load('Params\conv1_b.mat');
 weights = quantise_array(weights,scale_factor);
 bias = quantise_array(bias,scale_factor);
+
+write_array_xyz([root_dir 'weight1_0_i8.bin'],weights,1,0 );
+write_array_xyz([root_dir 'bias1_0_i8.bin'],bias,1,1 );
+save_tensor([root_dir 'input_i8.bin'],img);
 conv_rslt = conv(img, weights, bias, 7, 2, 0, 1);
 conv_rslt = relu(conv_rslt);
 convolution_max(1) = max(conv_rslt(:));

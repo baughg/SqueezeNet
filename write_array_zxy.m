@@ -13,6 +13,8 @@ end
 Wght = wght_rf;
 clear wght_rf;
 [W,H,Cn,Cp] = size(Wght);
+order = 2;
+fwrite(fid,order,'int32');
 fwrite(fid,W,'int32');
 fwrite(fid,H,'int32');
 fwrite(fid,Cn,'int32');

@@ -1,18 +1,12 @@
-function write_array_zxy(filename,Wght )
+function write_array_xyz(filename,Wght,layer, item )
 fid = fopen(filename,'wb');
 
 [W,H,Cn,Cp] = size(Wght);
-wght_rf = zeros(W,H,Cp,Cn);
+order = 1;
+fwrite(fid,layer,'uint16');
+fwrite(fid,item,'uint16');
+fwrite(fid,order,'int32');
 
-for s = 1:Cn
-    for cs = 1:Cp
-        wght_rf(:,:,cs,s) = Wght(:,:,s,cs);
-    end
-end
-
-Wght = wght_rf;
-clear wght_rf;
-[W,H,Cn,Cp] = size(Wght);
 fwrite(fid,W,'int32');
 fwrite(fid,H,'int32');
 fwrite(fid,Cn,'int32');
