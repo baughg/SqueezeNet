@@ -71,7 +71,7 @@ conv_rslt = zeros (55, 55, 128);
 conv_rslt (:, :, 1:64) = conv_rslt_1;
 conv_rslt (:, :, 65:128) = conv_rslt_2;
 load('Intermed_Results\9_fire2_concat.mat')
-if (cmp)
+ if (cmp)
     fprintf('Max error in Fire2: %f\n', max(abs(data(:) - conv_rslt(:))));
 end
 %% Fire Layer 3
@@ -262,16 +262,19 @@ load('Params\conv10_b.mat');
 conv_rslt = conv(conv_rslt, weights, bias, 1, 1, 1, 1);
 conv_rslt = relu(conv_rslt);
 load('Intermed_Results\54_conv10.mat');
-fprintf('Max error in conv10: %f\n', max(abs(data(:) - conv_rslt(:))));
-
+if (cmp)
+    fprintf('Max error in conv10: %f\n', max(abs(data(:) - conv_rslt(:))));
+end
 %% Average Pooling Layer
 pool_rslt = avgpool(conv_rslt, 15, 1);
 load('Intermed_Results\55_pool10.mat');
-fprintf('Max error in avgpool10: %f\n', max(abs(data(:) - pool_rslt(:))));
-
+if (cmp)
+    fprintf('Max error in avgpool10: %f\n', max(abs(data(:) - pool_rslt(:))));
+end
 %% Softmax
 soft_rslt = softmax(pool_rslt);
 load('Intermed_Results\56_prob.mat');
-fprintf('Max error in softmax: %f\n', max(abs(data(:) - soft_rslt(:))));
-
+if (cmp)
+    fprintf('Max error in softmax: %f\n', max(abs(data(:) - soft_rslt(:))));
+end
 toc

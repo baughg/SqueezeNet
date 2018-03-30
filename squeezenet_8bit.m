@@ -35,14 +35,34 @@ img = preproc(inputFile, meanFile);
 
 figure(1);
 image(uint8(img)); axis image; axis off; colormap(gray(256));
+scale_factor = 127;
+img = scale_and_quantise_max(img);
+convolution_max = zeros(1,18);
+% thres = [60471.5 31634.5 12599.75 20294.5 16296.25 13944.25 11778.25 26338.75 12000 16544.75 10269.5 16650.75 13664.5 15626 10621.5 23674.25 8922.5 5603];
+thres = [72397 37066 11202 16939 14289 17973 10640 30756 13120 16579 12955 11371 13636 14743 13930 22782 11406 5303];
+
+thres(:) = 128*128;
+% lb2_thres(1:2) = thres(1:2);
+thres(1) = bitshift(1,16);
+thres(2) = bitshift(1,15);
+
+lb2_thres = log10(thres) / log10(2);
+lb2_thres = floor(lb2_thres);
+lb2_thres = lb2_thres - 12;
+
+
 %% Convolution Layer 1
 %load('Intermed_Results\1_data.mat');
 %img = data;
 tic
 load('Params\conv1_w.mat');
 load('Params\conv1_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt = conv(img, weights, bias, 7, 2, 0, 1);
 conv_rslt = relu(conv_rslt);
+convolution_max(1) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(1));
 load('Intermed_Results\2_conv1.mat');
 if (cmp)
     fprintf('Max error in conv1: %f\n', max(abs(data(:) - conv_rslt(:))));
@@ -56,23 +76,33 @@ end
 %% Fire Layer 2
 load('Params\fire2_squeeze1x1_w.mat');
 load('Params\fire2_squeeze1x1_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt = conv(pool_rslt, weights, bias, 1, 1, 0, 1);
 conv_rslt = relu(conv_rslt);
+convolution_max(2) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(2));
 load('Intermed_Results\4_fire2_squeeze1x1.mat');
 if (cmp)
     fprintf('Max error in Fire2/SQ1: %f\n', max(abs(data(:) - conv_rslt(:))));
 end
 load('Params\fire2_expand1x1_w.mat');
 load('Params\fire2_expand1x1_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt_1 = conv(conv_rslt, weights, bias, 1, 1, 0, 1);
 conv_rslt_1 = relu(conv_rslt_1);
 load('Params\fire2_expand3x3_w.mat');
 load('Params\fire2_expand3x3_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt_2 = conv(conv_rslt, weights, bias, 3, 1, 1, 1);
 conv_rslt_2 = relu(conv_rslt_2);
 conv_rslt = zeros (55, 55, 128);
 conv_rslt (:, :, 1:64) = conv_rslt_1;
 conv_rslt (:, :, 65:128) = conv_rslt_2;
+convolution_max(3) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(3));
 load('Intermed_Results\9_fire2_concat.mat')
 if (cmp)
     fprintf('Max error in Fire2: %f\n', max(abs(data(:) - conv_rslt(:))));
@@ -80,23 +110,33 @@ end
 %% Fire Layer 3
 load('Params\fire3_squeeze1x1_w.mat');
 load('Params\fire3_squeeze1x1_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt = conv(conv_rslt, weights, bias, 1, 1, 0, 1);
 conv_rslt = relu(conv_rslt);
+convolution_max(4) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(4));
 load('Intermed_Results\10_fire3_squeeze1x1.mat');
 if (cmp)
     fprintf('Max error in Fire3/SQ1: %f\n', max(abs(data(:) - conv_rslt(:))));
 end    
 load('Params\fire3_expand1x1_w.mat');
 load('Params\fire3_expand1x1_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt_1 = conv(conv_rslt, weights, bias, 1, 1, 0, 1);
 conv_rslt_1 = relu(conv_rslt_1);
 load('Params\fire3_expand3x3_w.mat');
 load('Params\fire3_expand3x3_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt_2 = conv(conv_rslt, weights, bias, 3, 1, 1, 1);
 conv_rslt_2 = relu(conv_rslt_2);
 conv_rslt = zeros (55, 55, 128);
 conv_rslt (:, :, 1:64) = conv_rslt_1;
 conv_rslt (:, :, 65:128) = conv_rslt_2;
+convolution_max(5) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(5));
 load('Intermed_Results\15_fire3_concat.mat')
 if (cmp)
     fprintf('Max error in Fire3: %f\n', max(abs(data(:) - conv_rslt(:))));
@@ -104,23 +144,33 @@ end
 %% Fire Layer 4
 load('Params\fire4_squeeze1x1_w.mat');
 load('Params\fire4_squeeze1x1_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt = conv(conv_rslt, weights, bias, 1, 1, 0, 1);
 conv_rslt = relu(conv_rslt);
+convolution_max(6) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(6));
 load('Intermed_Results\16_fire4_squeeze1x1.mat');
 if (cmp)
     fprintf('Max error in Fire4/SQ1: %f\n', max(abs(data(:) - conv_rslt(:))));
 end    
 load('Params\fire4_expand1x1_w.mat');
 load('Params\fire4_expand1x1_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt_1 = conv(conv_rslt, weights, bias, 1, 1, 0, 1);
 conv_rslt_1 = relu(conv_rslt_1);
 load('Params\fire4_expand3x3_w.mat');
 load('Params\fire4_expand3x3_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt_2 = conv(conv_rslt, weights, bias, 3, 1, 1, 1);
 conv_rslt_2 = relu(conv_rslt_2);
 conv_rslt = zeros (55, 55, 256);
 conv_rslt (:, :, 1:128) = conv_rslt_1;
 conv_rslt (:, :, 129:256) = conv_rslt_2;
+convolution_max(7) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(7));
 load('Intermed_Results\21_fire4_concat.mat')
 if (cmp)
     fprintf('Max error in Fire4: %f\n', max(abs(data(:) - conv_rslt(:))));
@@ -135,23 +185,33 @@ end
 %% Fire Layer 5
 load('Params\fire5_squeeze1x1_w.mat');
 load('Params\fire5_squeeze1x1_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt = conv(pool_rslt, weights, bias, 1, 1, 0, 1);
 conv_rslt = relu(conv_rslt);
+convolution_max(8) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(8));
 load('Intermed_Results\23_fire5_squeeze1x1.mat');
 if (cmp)
     fprintf('Max error in Fire5/SQ1: %f\n', max(abs(data(:) - conv_rslt(:))));
 end    
 load('Params\fire5_expand1x1_w.mat');
 load('Params\fire5_expand1x1_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt_1 = conv(conv_rslt, weights, bias, 1, 1, 0, 1);
 conv_rslt_1 = relu(conv_rslt_1);
 load('Params\fire5_expand3x3_w.mat');
 load('Params\fire5_expand3x3_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt_2 = conv(conv_rslt, weights, bias, 3, 1, 1, 1);
 conv_rslt_2 = relu(conv_rslt_2); 
 conv_rslt = zeros (27, 27, 256);
 conv_rslt (:, :, 1:128) = conv_rslt_1;
 conv_rslt (:, :, 129:256) = conv_rslt_2;
+convolution_max(9) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(9));
 load('Intermed_Results\28_fire5_concat.mat')
 if (cmp)
     fprintf('Max error in Fire5: %f\n', max(abs(data(:) - conv_rslt(:))));
@@ -159,23 +219,33 @@ end
 %% Fire Layer 6
 load('Params\fire6_squeeze1x1_w.mat');
 load('Params\fire6_squeeze1x1_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt = conv(conv_rslt, weights, bias, 1, 1, 0, 1);
 conv_rslt = relu(conv_rslt);
+convolution_max(10) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(10));
 load('Intermed_Results\29_fire6_squeeze1x1.mat');
 if (cmp)
     fprintf('Max error in Fire6/SQ1: %f\n', max(abs(data(:) - conv_rslt(:))));
 end    
 load('Params\fire6_expand1x1_w.mat');
 load('Params\fire6_expand1x1_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt_1 = conv(conv_rslt, weights, bias, 1, 1, 0, 1);
 conv_rslt_1 = relu(conv_rslt_1);
 load('Params\fire6_expand3x3_w.mat');
 load('Params\fire6_expand3x3_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt_2 = conv(conv_rslt, weights, bias, 3, 1, 1, 1);
 conv_rslt_2 = relu(conv_rslt_2);
 conv_rslt = zeros (27, 27, 384);
 conv_rslt (:, :, 1:192) = conv_rslt_1;
 conv_rslt (:, :, 193:384) = conv_rslt_2;
+convolution_max(11) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(11));
 load('Intermed_Results\34_fire6_concat.mat')
 if (cmp)
     fprintf('Max error in Fire6: %f\n', max(abs(data(:) - conv_rslt(:))));
@@ -183,23 +253,33 @@ end
 %% Fire Layer 7
 load('Params\fire7_squeeze1x1_w.mat');
 load('Params\fire7_squeeze1x1_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt = conv(conv_rslt, weights, bias, 1, 1, 0, 1);
 conv_rslt = relu(conv_rslt);
+convolution_max(12) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(12));
 load('Intermed_Results\35_fire7_squeeze1x1.mat');
 if (cmp)
     fprintf('Max error in Fire7/SQ1: %f\n', max(abs(data(:) - conv_rslt(:))));
 end    
 load('Params\fire7_expand1x1_w.mat');
 load('Params\fire7_expand1x1_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt_1 = conv(conv_rslt, weights, bias, 1, 1, 0, 1);
 conv_rslt_1 = relu(conv_rslt_1);
 load('Params\fire7_expand3x3_w.mat');
 load('Params\fire7_expand3x3_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt_2 = conv(conv_rslt, weights, bias, 3, 1, 1, 1);
 conv_rslt_2 = relu(conv_rslt_2);
 conv_rslt = zeros (27, 27, 384);
 conv_rslt (:, :, 1:192) = conv_rslt_1;
 conv_rslt (:, :, 193:384) = conv_rslt_2;
+convolution_max(13) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(13));
 load('Intermed_Results\40_fire7_concat.mat')
 if (cmp)
     fprintf('Max error in Fire7: %f\n', max(abs(data(:) - conv_rslt(:))));
@@ -207,23 +287,33 @@ end
 %% Fire Layer 8
 load('Params\fire8_squeeze1x1_w.mat');
 load('Params\fire8_squeeze1x1_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt = conv(conv_rslt, weights, bias, 1, 1, 0, 1);
 conv_rslt = relu(conv_rslt);
+convolution_max(14) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(14));
 load('Intermed_Results\41_fire8_squeeze1x1.mat');
 if (cmp)
     fprintf('Max error in Fire8/SQ1: %f\n', max(abs(data(:) - conv_rslt(:))));
 end
 load('Params\fire8_expand1x1_w.mat');
 load('Params\fire8_expand1x1_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt_1 = conv(conv_rslt, weights, bias, 1, 1, 0, 1);
 conv_rslt_1 = relu(conv_rslt_1);
 load('Params\fire8_expand3x3_w.mat');
 load('Params\fire8_expand3x3_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt_2 = conv(conv_rslt, weights, bias, 3, 1, 1, 1);
 conv_rslt_2 = relu(conv_rslt_2);
 conv_rslt = zeros (27, 27, 512);
 conv_rslt (:, :, 1:256) = conv_rslt_1;
 conv_rslt (:, :, 257:512) = conv_rslt_2;
+convolution_max(15) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(15));
 load('Intermed_Results\46_fire8_concat.mat')
 if (cmp)
     fprintf('Max error in Fire8: %f\n', max(abs(data(:) - conv_rslt(:))));
@@ -237,23 +327,33 @@ end
 %% Fire Layer 9
 load('Params\fire9_squeeze1x1_w.mat');
 load('Params\fire9_squeeze1x1_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt = conv(pool_rslt, weights, bias, 1, 1, 0, 1);
 conv_rslt = relu(conv_rslt);
+convolution_max(16) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(16));
 load('Intermed_Results\48_fire9_squeeze1x1.mat');
 if (cmp)
     fprintf('Max error in Fire9/SQ1: %f\n', max(abs(data(:) - conv_rslt(:))));
 end
 load('Params\fire9_expand1x1_w.mat');
 load('Params\fire9_expand1x1_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt_1 = conv(conv_rslt, weights, bias, 1, 1, 0, 1);
 conv_rslt_1 = relu(conv_rslt_1);
 load('Params\fire9_expand3x3_w.mat');
 load('Params\fire9_expand3x3_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt_2 = conv(conv_rslt, weights, bias, 3, 1, 1, 1);
 conv_rslt_2 = relu(conv_rslt_2);
 conv_rslt = zeros (13, 13, 512);
 conv_rslt (:, :, 1:256) = conv_rslt_1;
 conv_rslt (:, :, 257:512) = conv_rslt_2;
+convolution_max(17) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(17));
 load('Intermed_Results\53_fire9_concat.mat')
 if (cmp)
     fprintf('Max error in Fire9: %f\n', max(abs(data(:) - conv_rslt(:))));
@@ -262,8 +362,12 @@ end
 %% Convolution Layer 10
 load('Params\conv10_w.mat');
 load('Params\conv10_b.mat');
+weights = quantise_array(weights,scale_factor);
+bias = quantise_array(bias,scale_factor);
 conv_rslt = conv(conv_rslt, weights, bias, 1, 1, 1, 1);
 conv_rslt = relu(conv_rslt);
+convolution_max(18) = max(conv_rslt(:));
+conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(18));
 load('Intermed_Results\54_conv10.mat');
 if (cmp)
     fprintf('Max error in conv10: %f\n', max(abs(data(:) - conv_rslt(:))));
