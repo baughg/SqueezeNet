@@ -67,10 +67,17 @@ void densify_weights_zxy(std::string root_dir);
 void sparsify_weights_xyz(
   std::string root_dir, 
   std::string output_prefix,
+  storage_element_header &se_header,
+  FILE* &blob_file);
+
+void sparsify_weights_zxy(
+  std::string root_dir,
+  std::string output_prefix,
+  storage_element_header &se_header,
   FILE* &blob_file);
 
 void sparsify_input_xyz(std::string root_dir);
-void sparsify_weights_zxy(std::string root_dir, std::string output_prefix);
+
 void sparsify_weights_fc_zxy(std::string root_dir);
 unsigned get_order(std::string &filename, std::string &root_dir);
 
@@ -109,23 +116,60 @@ int main(int argc, char** argv)
     file_list.reserve(18);
     file_list.push_back("weight1_0");
     file_list.push_back("bias1_0");
-
+    file_list.push_back("weight2_0");
+    file_list.push_back("bias2_0");
+    file_list.push_back("weight2_1");
+    file_list.push_back("bias2_1");
+    file_list.push_back("weight2_2");
+    file_list.push_back("bias2_2");
+    file_list.push_back("weight3_0");
+    file_list.push_back("bias3_0");
+    file_list.push_back("weight3_1");
+    file_list.push_back("bias3_1");
+    file_list.push_back("weight3_2");
+    file_list.push_back("bias3_2");
+    uint32_t global_offset = 0;
+    std::vector<storage_element_header> se_header_list;
+    
     const size_t files = file_list.size();
+    se_header_list.resize(files);
+    const uint32_t header_count = (uint32_t)files;
+    fwrite(&header_count, sizeof(uint32_t), 1, blob_file);
+    fwrite(&se_header_list[0], sizeof(storage_element_header), files, blob_file);
+    global_offset += sizeof(uint32_t);
+    global_offset += sizeof(storage_element_header) * files;
 
     for (size_t f = 0; f < files; ++f) {
       switch (get_order(file_list[f], root_dir)) {
       case 1: // XYZ order
-        sparsify_weights_xyz(root_dir, file_list[f], blob_file);
+        sparsify_weights_xyz(root_dir, file_list[f], se_header_list[f], blob_file);
+        break;
+      case 2:
+        sparsify_weights_zxy(root_dir, file_list[f], se_header_list[f], blob_file);
+        break;
+      default:
+        printf("Read error!\n");
         break;
       }
+
+      global_offset += sizeof(storage_element_header);
+      se_header_list[f].data_offset += global_offset;
+      se_header_list[f].data_list_offset += global_offset;
+      se_header_list[f].sparse_map_offset += global_offset;
+      se_header_list[f].sparsity_list_offset += global_offset;
+      global_offset += se_header_list[f].size;
     }
 
     fclose(blob_file);
+
+    blob_file = fopen(blob_filename.c_str(), "rb+");
+    fseek(blob_file, 0, SEEK_SET);
+    fwrite(&header_count, sizeof(uint32_t), 1, blob_file);
+    fwrite(&se_header_list[0], sizeof(storage_element_header), files, blob_file);
+    fclose(blob_file);
   }
   else if(mode == 1)
-    densify_weights_zxy(root_dir);
-  else if(mode == 2)
-    sparsify_weights_zxy(root_dir,"weight1_0");
+    densify_weights_zxy(root_dir);  
   else if (mode == 3)
     sparsify_weights_fc_zxy(root_dir);
   if (mode == 4)
@@ -260,6 +304,7 @@ bool expand(
 void sparsify_weights_xyz(
   std::string root_dir, 
   std::string output_prefix,
+  storage_element_header &se_header,
   FILE* &blob_file)
 {
   std::vector<uint8_t> buffer;
@@ -291,7 +336,7 @@ void sparsify_weights_xyz(
     std::vector<uint8_t> sparsity_map;
     std::vector<uint32_t> storage_element_relative_address;
     std::vector<uint32_t> sparse_map_relative_address;
-    storage_element_header se_header;
+    
     se_header.layer = wght_header.layer;
     se_header.item = wght_header.item;
     se_header.order = wght_header.order;
@@ -485,7 +530,11 @@ void write_to_file_u32(std::vector<uint32_t> &data, std::string filename)
   }
 }
 
-void sparsify_weights_zxy(std::string root_dir, std::string output_prefix)
+void sparsify_weights_zxy(
+  std::string root_dir, 
+  std::string output_prefix,
+  storage_element_header &se_header,
+  FILE* &blob_file)
 {
   std::vector<uint8_t> buffer;
   std::vector<uint8_t> buffer_zxy;
@@ -518,7 +567,7 @@ void sparsify_weights_zxy(std::string root_dir, std::string output_prefix)
     std::vector<uint8_t> sparsity_map;
     std::vector<uint32_t> storage_element_relative_address;
     std::vector<uint32_t> sparse_map_relative_address;
-    storage_element_header se_header;
+    
 
     buffer_zxy.resize(buffer.size());
     uint8_t* p_buffer = &buffer[0];
@@ -532,25 +581,9 @@ void sparsify_weights_zxy(std::string root_dir, std::string output_prefix)
     uint32_t channel_set_size = channel_size * weight_sets;    
     uint32_t offset = 0;
 
-    for (uint32_t ws = 0; ws < weight_sets; ++ws)
-    {
-      p_weight_set_zxy = p_buffer_zxy + ws * weight_set_size;
-
-      for (uint32_t c = 0; c < channels; ++c) {
-        p_weight_set = p_buffer + ws * channel_size + c * channel_set_size;        
-
-        for (uint32_t e = 0; e < channel_size; ++e)
-        {
-          offset = e * channels + c;
-          p_weight_set_zxy[offset] = p_weight_set[e];
-        }
-
-        p_weight_set += channel_size;
-      }
-    }
-
+    
     build_storage_elements_XYZ(
-      buffer_zxy,
+      buffer,
       channels,
       channel_size,
       weight_sets,
@@ -559,20 +592,12 @@ void sparsify_weights_zxy(std::string root_dir, std::string output_prefix)
       storage_element_relative_address,
       sparse_map_relative_address,
       se_header);
-
-
-    std::string filename = root_dir;
-    filename.append(output_prefix + "_packed_data_i8.bin");
-    write_to_file(packed_data, filename);
-    filename = root_dir;
-    filename.append(output_prefix + "_sparsity_map_i8.bin");
-    write_to_file(sparsity_map, filename);
-    filename = root_dir;
-    filename.append(output_prefix + "_se_data_address_i8.bin");
-    write_to_file_u32(storage_element_relative_address, filename);
-    filename = root_dir;
-    filename.append(output_prefix + "_se_sparsity_address_i8.bin");
-    write_to_file_u32(sparse_map_relative_address, filename);
+    
+    fwrite(&se_header, sizeof(se_header), 1, blob_file);
+    write_to_file(packed_data, blob_file);    
+    write_to_file(sparsity_map, blob_file);    
+    write_to_file_u32(storage_element_relative_address, blob_file);  
+    write_to_file_u32(sparse_map_relative_address, blob_file);
   }
 }
 
