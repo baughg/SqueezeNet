@@ -72,6 +72,8 @@ log_layer_io( 0,0,1, 3, 0 );
 log_layer_io( 1,0,1, 1, 1 );
 log_layer_io( 1,1,1, 2, 1 );
 log_layer_io( 1,2,0, 3, 1 );
+% layer_io_config( layer_in,item_in, scale, append )
+layer_io_config(1,2,lb2_thres(1),0);
 conv_rslt = conv(img, weights, bias, 7, 2, 0, 1);
 conv_rslt = relu(conv_rslt);
 convolution_max(1) = max(conv_rslt(:));

@@ -1,12 +1,23 @@
 #ifndef OPERATION_H
 #define OPERATION_H
 #include <stdint.h>
+#include <string>
+#include <vector>
 
 typedef enum 
 {
   OP_NONE,
   OP_CONV
 }operation_type;
+
+typedef struct operation_header
+{
+  uint32_t type;
+  uint32_t size;
+  uint32_t inputs;
+  uint32_t outputs;
+  uint32_t output_configurations;
+};
 
 typedef struct convolution_op
 {
@@ -41,5 +52,23 @@ typedef struct operation_io
   uint16_t data_type;
 }operation_io;
 
+typedef struct operation_config
+{
+  uint16_t layer;
+  uint16_t item;
+  uint32_t scale;
+}operation_config;
 
+void generate_operation_list(const std::string &root_dir);
+
+void process_convolution(
+  uint32_t &op_id, 
+  std::string &op_filename,
+  FILE* &op_file);
+
+bool get_io_list(uint32_t &op_id,
+  std::vector<operation_io> &io_list);
+
+bool get_io_config_list(uint32_t &op_id,
+  std::vector<operation_config> &io_cfg_list);
 #endif

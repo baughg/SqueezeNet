@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "sparsity.h"
+#include "operation.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -23,13 +24,16 @@ int main(int argc, char** argv)
   if (argc >= 3)
   {
     if (strcmp(argv[2], "input") == 0)
-      mode = 1;    
+      mode = 1;
+    else if (strcmp(argv[2], "op") == 0)
+      mode = 2;
   }
 
   std::string root_dir(argv[1]);
   std::vector<std::string> file_list;
   file_list.reserve(18);
   std::string output_filename;
+
   if (!mode) {
     output_filename = "squeezenet.blob";
     file_list.push_back("weight1_0");
@@ -50,6 +54,11 @@ int main(int argc, char** argv)
   else if (mode == 1) {
     output_filename = "input.blob";
     file_list.push_back("input0_0");
+  }
+  else if (mode == 2)
+  {
+    generate_operation_list(root_dir);
+    return 0;
   }
 
 
