@@ -1,4 +1,5 @@
 #include "operation.h"
+#include "sparsity.h"
 #include <stdio.h>
 #include <string>
 
@@ -76,11 +77,34 @@ void process_convolution(
   operation_header header;
   memset(&header, 0, sizeof(header));
   header.type = (uint32_t)OP_CONV;
+  uint32_t output_width = 0;
+  uint32_t output_height = 0;
+  uint32_t output_channels = 0;
+  std::vector<uint8_t> dummy_data;
+
+  std::vector<uint8_t> packed_data;
+  std::vector<uint8_t> sparsity_map;
+  std::vector<uint32_t> storage_element_relative_address;
+  std::vector<uint32_t> sparse_map_relative_address;
+  storage_element_header se_header;
+  memset(&se_header, 0, sizeof(se_header));
 
   if (file)
   {    
     fread(&conv_op, sizeof(conv_op), 1, file);
     fclose(file);  
+
+    output_width = conv_op.input_width - ((conv_op.kernel_size >> 1) << 1);
+    output_width /= conv_op.stride;
+    output_width += (conv_op.stride >> 1);
+
+    output_height = conv_op.input_height - ((conv_op.kernel_size >> 1) << 1);
+    output_height /= conv_op.stride;
+    output_height += (conv_op.stride >> 1);
+
+    dummy_data.resize(output_width*output_height*conv_op.output_channels);
+    memset(&dummy_data[0], 0xff, dummy_data.size());
+
     header.size = sizeof(conv_op);
     // load inputs
     if (get_io_list(op_id, operation_io_list))
@@ -102,6 +126,44 @@ void process_convolution(
       header.outputs = (uint32_t)output_list.size();
     }
 
+    if (header.outputs)
+    {
+      switch (output_list[0].storage_order)
+      {
+      case CHANNEL_MAJOR:
+        se_header.order = CHANNEL_MAJOR;
+        se_header.layer = output_list[0].layer;
+        se_header.item = output_list[0].item;
+
+        build_storage_elements_XYZ(
+          dummy_data,
+          output_width,
+          output_height,
+          conv_op.output_channels,
+          packed_data,
+          sparsity_map,
+          storage_element_relative_address,
+          sparse_map_relative_address,
+          se_header);
+        break;
+      }
+
+      uint32_t elements = se_header.element_count >> 4;
+      elements <<= 4;
+
+      if (elements < se_header.element_count)
+        elements += 16;
+
+      uint32_t data_size = elements * se_header.element_aligned_bytes;
+      uint32_t sparsity_size = elements * se_header.sparsity_bytes;
+      se_header.element_count = elements;
+      se_header.sparsity_list_offset = elements << 2;
+      se_header.data_offset = se_header.sparsity_list_offset << 1;
+      se_header.sparse_map_offset = se_header.data_offset + data_size;
+      se_header.size = se_header.sparse_map_offset + sparsity_size;
+      header.size += sizeof(se_header);
+    }
+
     // load config
     if (get_io_config_list(op_id, io_cfg_list))
     {
@@ -120,6 +182,9 @@ void process_convolution(
 
     if (header.output_configurations)
       fwrite(&io_cfg_list[0], sizeof(operation_config), header.output_configurations, op_file);
+
+    if (header.outputs)
+      fwrite(&se_header, sizeof(se_header), 1, op_file);
   }
 }
 

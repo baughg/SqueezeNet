@@ -10,6 +10,12 @@ typedef enum
   OP_CONV
 }operation_type;
 
+typedef enum
+{
+  Z_MAJOR,
+  CHANNEL_MAJOR
+}storage_order;
+
 typedef struct operation_header
 {
   uint32_t type;
@@ -50,6 +56,7 @@ typedef struct operation_io
   uint16_t item;
   uint16_t direction;
   uint16_t data_type;
+  uint32_t storage_order;
 }operation_io;
 
 typedef struct operation_config

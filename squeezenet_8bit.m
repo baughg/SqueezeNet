@@ -11,6 +11,8 @@ cmp = 0;            %If cmp == 1, program checks the intermediate results
                     %in the confix.txt file.
 global operation_id;
 operation_id = 1;
+Z_MAJOR = 0;
+CHANNEL_MAJOR = 1;
 fileId = fopen('Config.txt');
 if (fileId == -1)
     error('Cannot find config.txt in the current directory');
@@ -68,10 +70,10 @@ write_array_xyz([root_dir 'bias1_0_i8.bin'],bias,1,1 );
 
 save_tensor([root_dir 'input0_0_i8.bin'],img);
 % log_layer_io( layer_in,item_in, dir_io, io_type, append )
-log_layer_io( 0,0,1, 3, 0 );
-log_layer_io( 1,0,1, 1, 1 );
-log_layer_io( 1,1,1, 2, 1 );
-log_layer_io( 1,2,0, 3, 1 );
+log_layer_io( 0,0,1, 3, 0, CHANNEL_MAJOR );
+log_layer_io( 1,0,1, 1, 1, CHANNEL_MAJOR );
+log_layer_io( 1,1,1, 2, 1, CHANNEL_MAJOR );
+log_layer_io( 1,2,0, 3, 1, CHANNEL_MAJOR);
 % layer_io_config( layer_in,item_in, scale, append )
 layer_io_config(1,2,lb2_thres(1),0);
 conv_rslt = conv(img, weights, bias, 7, 2, 0, 1);
