@@ -24,6 +24,8 @@
 %If group==1, the OFMs depend on all IFMs. If group==2, the IFMs and OFMs are
 %split into two groups, therefore the OFMs only depend on half the IFMs.
 function [ top ] = conv( bottom, weight, bias, K, S, pad, group )
+    global operation_id;
+    
     [Win,Hin,N]=size(bottom);
     [~,~,~,M]=size(weight);
     bottomPadded=zeros(Win+2*pad,Hin+2*pad,N);
@@ -31,6 +33,18 @@ function [ top ] = conv( bottom, weight, bias, K, S, pad, group )
     Wout=(Win+2*pad-K)/S+1;
     Hout=(Hin+2*pad-K)/S+1;
     top=zeros(Wout,Hout,M);
+    fid = fopen(['operation/op' num2str(operation_id) '.bin'],'wb');
+    op_type = 1;
+    fwrite(fid,op_type,'uint32');
+    fwrite(fid,Win,'uint32');
+    fwrite(fid,Hin,'uint32');
+    fwrite(fid,N,'uint32');
+    fwrite(fid,M,'uint32');
+    fwrite(fid,K,'uint32');
+    fwrite(fid,S,'uint32');
+    fwrite(fid,pad,'uint32');
+    fclose(fid);
+    operation_id = operation_id + 1;
     %Convolve kernels with input feature maps.
     %Code is vectorized over N: For one specific output feature map,
     %convolve all input feature maps and the corresponding kernels at the

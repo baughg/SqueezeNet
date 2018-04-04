@@ -9,6 +9,8 @@ cmp = 0;            %If cmp == 1, program checks the intermediate results
                     %with the expected results and print the difference. 
                     %If you want to use your own image file, set this to 0 
                     %in the confix.txt file.
+global operation_id;
+operation_id = 1;
 fileId = fopen('Config.txt');
 if (fileId == -1)
     error('Cannot find config.txt in the current directory');
@@ -63,7 +65,13 @@ bias = quantise_array(bias,scale_factor);
 
 write_array_xyz([root_dir 'weight1_0_i8.bin'],weights,1,0 );
 write_array_xyz([root_dir 'bias1_0_i8.bin'],bias,1,1 );
-save_tensor([root_dir 'input_i8.bin'],img);
+
+save_tensor([root_dir 'input0_0_i8.bin'],img);
+% log_layer_io( layer_in,item_in, dir_io, io_type, append )
+log_layer_io( 0,0,1, 3, 0 );
+log_layer_io( 1,0,1, 1, 1 );
+log_layer_io( 1,1,1, 2, 1 );
+log_layer_io( 1,2,0, 3, 1 );
 conv_rslt = conv(img, weights, bias, 7, 2, 0, 1);
 conv_rslt = relu(conv_rslt);
 convolution_max(1) = max(conv_rslt(:));
