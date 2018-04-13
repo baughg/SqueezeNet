@@ -80,6 +80,7 @@ conv_rslt = conv(img, weights, bias, 7, 2, 0, 1);
 conv_rslt = relu(conv_rslt);
 convolution_max(1) = max(conv_rslt(:));
 conv_rslt = scale_and_quantise_var(conv_rslt, lb2_thres(1));
+save('conv_rslt_1_2.mat','conv_rslt');
 load('Intermed_Results\2_conv1.mat');
 if (cmp)
     fprintf('Max error in conv1: %f\n', max(abs(data(:) - conv_rslt(:))));

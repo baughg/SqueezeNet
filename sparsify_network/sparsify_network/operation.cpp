@@ -17,6 +17,7 @@ void generate_operation_list(const std::string &root_dir)
   op_filename.append("squeezenet.op");
   op_file = fopen(op_filename.c_str(), "wb");
   bool done = false;
+  fwrite(&op, sizeof(op), 1, op_file);
 
   while (!done)
   {
@@ -36,7 +37,12 @@ void generate_operation_list(const std::string &root_dir)
     }
     op++;
   }
+  fclose(op_file);
 
+  op -= 2;
+  op_file = fopen(op_filename.c_str(), "rb+");
+  fseek(op_file, 0, SEEK_SET); 
+  fwrite(&op, sizeof(op), 1, op_file);
   fclose(op_file);
 }
 
@@ -140,6 +146,22 @@ void process_convolution(
           output_width,
           output_height,
           conv_op.output_channels,
+          packed_data,
+          sparsity_map,
+          storage_element_relative_address,
+          sparse_map_relative_address,
+          se_header);
+        break;
+      case Z_MAJOR:
+        se_header.order = Z_MAJOR;
+        se_header.layer = output_list[0].layer;
+        se_header.item = output_list[0].item;
+
+        build_storage_elements_XYZ(
+          dummy_data,
+          conv_op.output_channels,
+          output_width,
+          output_height,
           packed_data,
           sparsity_map,
           storage_element_relative_address,
